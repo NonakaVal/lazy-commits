@@ -1,201 +1,221 @@
 import subprocess
 import os
 import json
+from typing import Dict, Tuple, Optional
 
-# ========== CONFIGURAÇÕES ==========
-repo_path = r''  # Caminho do seu repositório
-default_branch = ''  # Branch padrão
+# ========== CONFIGURATION ==========
+REPO_PATH = r'C:\Users\desktop\Documents\MyApps\lazy-commits'  # Your repo path
+DEFAULT_BRANCH = 'main'  # Your default branch
+COUNTER_FILE = os.path.join(REPO_PATH, 'commit_counters.json')
 
-
-
-
-commit_purposes = {
-    '1': 'fix: correct typos or small errors',
-    '2': 'fix: resolve bugs or functional issues',
-    '3': 'fix: correct broken links or paths',
-
-    '4': 'feat: add new feature',
-    '5': 'feat: implement UI/UX improvements',
-    '6': 'feat: integrate third-party service',
-    '7': 'feat: improve search functionality',
-    '8': 'feat: add form validation',
-
-    '9': 'docs: update README or user guides',
-    '10': 'docs: improve developer documentation',
-    '11': 'docs: add comments to codebase',
-
-    '12': 'style: apply formatting or stylistic fixes (no code change)',
-    '13': 'refactor: restructure code without changing functionality',
-    '14': 'perf: optimize code for better performance',
-    '15': 'chore: update configurations or dependencies',
-    '16': 'chore: remove deprecated files or assets',
-
-    '17': 'test: add new unit or integration tests',
-    '18': 'test: fix failing tests or update test logic',
-
-    '19': 'ci: update CI/CD workflows or pipeline configs',
-    '20': 'build: adjust build scripts or dependencies'
+# Improved commit messages with Conventional Commits standard
+COMMIT_PURPOSES = {
+    # Fixes (bug fixes - generates PATCH in semver)
+    '1': 'fix: correct [issue] in [component]',  # "fix: correct typo in login error"
+    '2': 'fix: resolve [bug]',                  # "fix: resolve infinite loop in parser"
+    '3': 'fix: repair broken [functionality]',  # "fix: repair broken image upload"
+    
+    # Features (new functionality - generates MINOR in semver)
+    '4': 'feat: implement [feature]',           # "feat: implement dark mode"
+    '5': 'feat: add [component] to [section]',  # "feat: add pagination to dashboard"
+    '6': 'feat: integrate [service/api]',       # "feat: integrate Stripe payments"
+    
+    # Documentation
+    '7': 'docs: update [documentation]',        # "docs: update API endpoints"
+    '8': 'docs: add examples for [feature]',    # "docs: add auth examples"
+    
+    # Code quality
+    '9': 'refactor: simplify [component]',      # "refactor: simplify cart logic"
+    '10': 'perf: optimize [process]',           # "perf: optimize image compression"
+    '11': 'style: format [code]',               # "style: format CSS variables"
+    
+    # Maintenance
+    '12': 'chore: update [dependency]',         # "chore: update React to v18"
+    '13': 'chore: remove deprecated [code]',    # "chore: remove old analytics SDK"
+    
+    # Testing
+    '14': 'test: add [type] test for [component]',  # "test: add unit tests for validation"
+    '15': 'test: fix [test]',                       # "test: fix flaky API test"
+    
+    # CI/CD
+    '16': 'ci: configure [pipeline]',           # "ci: configure Docker pipeline"
+    '17': 'build: modify [config]',             # "build: modify webpack settings"
+    
+    # Special cases
+    '18': 'revert: undo [change]',              # "revert: undo DB migration"
+    '19': 'wip: [feature] in progress',         # "wip: shopping cart integration"
+    '20': 'hotfix: emergency fix for [issue]'   # "hotfix: patch security vulnerability"
 }
 
-counter_file = os.path.join(repo_path, 'commit_counters.json')
+# ========== UTILITY FUNCTIONS ==========
 
-# ========== FUNÇÕES DE UTILIDADE ==========
+def load_counters() -> Dict[str, int]:
+    """Load commit counters from JSON file."""
+    try:
+        if os.path.exists(COUNTER_FILE):
+            with open(COUNTER_FILE, 'r') as f:
+                return json.load(f)
+    except json.JSONDecodeError:
+        print("⚠️ Error reading counters file. Creating new one.")
+    return {key: 0 for key in COMMIT_PURPOSES.keys()}
 
-def load_counters():
-    """Carrega os contadores de commit do arquivo."""
-    if os.path.exists(counter_file):
-        with open(counter_file, 'r') as f:
-            return json.load(f)
-    else:
-        return {key: 0 for key in commit_purposes.keys()}
+def save_counters(counters: Dict[str, int]) -> None:
+    """Save commit counters to JSON file."""
+    with open(COUNTER_FILE, 'w') as f:
+        json.dump(counters, f, indent=2)
 
-def save_counters(counters):
-    """Salva os contadores de commit no arquivo."""
-    with open(counter_file, 'w') as f:
-        json.dump(counters, f, indent=4)
-
-def run_git_command(command, capture_output=False):
-    """Executa um comando Git no repositório."""
+def run_git_command(command: str) -> Tuple[bool, str, str]:
+    """Execute git command and return (success, stdout, stderr)."""
     process = subprocess.Popen(
         command,
-        cwd=repo_path,
+        cwd=REPO_PATH,
         shell=True,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
+        text=True
     )
     stdout, stderr = process.communicate()
+    return process.returncode == 0, stdout.strip(), stderr.strip()
+
+def has_uncommitted_changes() -> bool:
+    """Check if there are uncommitted changes."""
+    success, stdout, _ = run_git_command("git status --porcelain")
+    return success and stdout != ""
+
+def get_current_branch() -> Optional[str]:
+    """Get current git branch name."""
+    success, stdout, _ = run_git_command("git branch --show-current")
+    return stdout if success else None
+
+def show_git_status() -> None:
+    """Display git status information."""
+    print("\n" + "="*50)
+    print("GIT STATUS".center(50))
+    print("="*50)
     
-    if capture_output:
-        return process.returncode == 0, stdout.decode(), stderr.decode()
+    # Show current branch
+    branch = get_current_branch()
+    print(f"Current branch: {branch or 'Unknown'}")
     
-    if process.returncode == 0:
-        print(stdout.decode())
-    else:
-        print(f"❌ Error: {stderr.decode()}")
-    return process.returncode == 0
+    # Show status
+    _, status_output, _ = run_git_command("git status")
+    print(f"\n{status_output}")
+    
+    # Show recent commits
+    print("\nRecent commits:")
+    _, log_output, _ = run_git_command("git log --oneline -5")
+    print(log_output)
+    
+    print("="*50 + "\n")
 
-def has_changes():
-    """Verifica se há alterações a serem commitadas."""
-    result = subprocess.run(
-        ['git', 'status', '--porcelain'],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        shell=True
-    )
-    return result.stdout.strip() != ""
-
-def get_current_branch():
-    """Obtém o nome da branch atual."""
-    result = subprocess.run(
-        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        shell=True
-    )
-    return result.stdout.strip()
-
-def show_git_status():
-    """Mostra o status do Git."""
-    print("\n📊 Status do Git:")
-    run_git_command('git status')
-    print()
-
-def confirm_branch(branch):
-    """Confirma se o usuário deseja usar a branch atual."""
+def confirm_branch(target_branch: str) -> bool:
+    """Confirm if user wants to use current branch."""
     current_branch = get_current_branch()
-    if current_branch != branch:
-        print(f"⚠️ Você não está na branch '{branch}'. Branch atual: '{current_branch}'")
-        choice = input(f"Deseja continuar com a branch atual '{current_branch}'? (s/n): ").lower()
-        if choice != 's':
-            print("Operação cancelada.")
-            return None
-        return current_branch
-    return branch
+    if current_branch != target_branch:
+        print(f"⚠️ You're not on '{target_branch}'. Current branch: '{current_branch}'")
+        choice = input(f"Continue with '{current_branch}'? (y/N): ").lower()
+        return choice == 'y'
+    return True
 
-def git_commit_push():
-    """Faz commit e push da branch atual."""
+def commit_and_push() -> None:
+    """Interactive commit and push workflow."""
     counters = load_counters()
-
-    print("\n📜 Selecione o propósito do commit:")
-    for key, purpose in commit_purposes.items():
-        print(f"{key}: {purpose}")
     
-    purpose_key = input("Digite o número correspondente ao propósito (ou 'c' para cancelar): ").strip()
-
-    if purpose_key.lower() == 'c':
-        print("Operação cancelada.")
+    # Show commit purpose options
+    print("\n" + "="*50)
+    print("SELECT COMMIT TYPE".center(50))
+    print("="*50)
+    for key, purpose in COMMIT_PURPOSES.items():
+        print(f"{key.rjust(2)}: {purpose}")
+    print("="*50)
+    
+    # Get user selection
+    while True:
+        choice = input("\nEnter commit type number (1-20) or 'c' to cancel: ").strip()
+        if choice.lower() == 'c':
+            print("Commit cancelled.")
+            return
+        if choice in COMMIT_PURPOSES:
+            break
+        print("Invalid choice. Please try again.")
+    
+    # Confirm branch
+    if not confirm_branch(DEFAULT_BRANCH):
         return
     
-    if purpose_key not in commit_purposes:
-        print("❌ Seleção inválida.")
-        return
-
-    branch = confirm_branch(default_branch)
-    if branch is None:
-        return
-
-    counters[purpose_key] += 1
-    commit_message = f"{commit_purposes[purpose_key]} (#{counters[purpose_key]})"
+    # Generate commit message
+    counters[choice] += 1
+    base_message = COMMIT_PURPOSES[choice]
+    custom_part = input(f"\nComplete the message '{base_message}': ").strip()
+    commit_message = f"{base_message.replace('[', '').replace(']', '')} {custom_part} (#{counters[choice]})"
     
-    print(f"\n📝 Commit message: {commit_message}\n")
+    print(f"\nCommit message: {commit_message}")
     
-    if not has_changes():
-        print("⚠️ Nenhuma alteração detectada. Nada para commit.")
+    # Check for changes
+    if not has_uncommitted_changes():
+        print("No changes to commit.")
         return
-
-    run_git_command('git add .')
-    run_git_command(f'git commit -m "{commit_message}"')
-
-    result = subprocess.run(
-        ['git', 'push'],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        shell=True
-    )
-
-    if 'has no upstream branch' in result.stderr:
-        print(f"🔗 Branch '{branch}' não tem upstream. Configurando...")
-        run_git_command(f'git push --set-upstream origin {branch}')
-        print(f"✅ Upstream configurado: 'origin/{branch}'")
-    elif result.returncode != 0:
-        print(f"❌ Error: {result.stderr}")
+    
+    # Add and commit
+    run_git_command("git add .")
+    success, _, err = run_git_command(f'git commit -m "{commit_message}"')
+    if not success:
+        print(f"❌ Commit failed: {err}")
+        return
+    
+    # Push changes
+    print("\nPushing changes...")
+    success, out, err = run_git_command("git push")
+    if not success:
+        if "no upstream branch" in err.lower():
+            print(f"Setting upstream for branch...")
+            branch = get_current_branch()
+            success, _, _ = run_git_command(f"git push --set-upstream origin {branch}")
+            if success:
+                print(f"✅ Successfully set upstream and pushed to {branch}")
+        else:
+            print(f"❌ Push failed: {err}")
     else:
-        print(f"✅ Push realizado com sucesso para '{branch}'!")
+        print(f"✅ Successfully pushed changes")
     
     save_counters(counters)
 
-# ========== MENU PRINCIPAL ==========
+# ========== MAIN MENU ==========
 
-def main_menu():
-    """Exibe o menu principal e processa as escolhas do usuário."""
+def main_menu() -> None:
+    """Main interactive menu."""
     while True:
-        print("\n" + "="*40)
-        print("MENU PRINCIPAL".center(40))
-        print("="*40)
-        print("1. Ver status do Git")
-        print("2. Fazer commit e push")
-        print("3. Encerrar programa")
-        print("="*40)
+        print("\n" + "="*50)
+        print("GIT HELPER TOOL".center(50))
+        print("="*50)
+        print("1. View Git Status")
+        print("2. Commit & Push Changes")
+        print("3. Exit")
+        print("="*50)
         
-        choice = input("Escolha uma opção (1-3): ").strip()
+        choice = input("\nSelect option (1-3): ").strip()
         
         if choice == '1':
             show_git_status()
         elif choice == '2':
-            git_commit_push()
+            commit_and_push()
         elif choice == '3':
-            print("Encerrando o programa...")
+            print("\nExiting Git Helper. Goodbye!")
             break
         else:
-            print("❌ Opção inválida. Por favor, escolha 1, 2 ou 3.")
+            print("Invalid option. Please try again.")
 
-# ========== EXECUÇÃO PRINCIPAL ==========
+# ========== ENTRY POINT ==========
 
 if __name__ == "__main__":
     try:
+        # Verify git repository
+        if not os.path.exists(os.path.join(REPO_PATH, '.git')):
+            print(f"❌ Error: {REPO_PATH} is not a Git repository")
+            exit(1)
+            
         main_menu()
     except KeyboardInterrupt:
-        print("\nPrograma interrompido pelo usuário.")
+        print("\nOperation cancelled by user.")
+    except Exception as e:
+        print(f"\n❌ An error occurred: {str(e)}")
