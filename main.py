@@ -3,8 +3,8 @@ import os
 import json
 
 # ========== CONFIGURAÇÕES ==========
-repo_path = r'C:\Users\desktop\Documents\MyApps\lazy-commits'  # Caminho do seu repositório
-default_branch = 'main'  # Branch padrão
+repo_path = r''  # Caminho do seu repositório
+default_branch = ''  # Branch padrão
 
 
 
