@@ -87,6 +87,8 @@ def run_git_command(command):
     result = subprocess.run(command, cwd=repo_path, shell=True, text=True, capture_output=True)
     if result.returncode != 0:
         print(f"⚠️ Erro ao executar '{command}': {result.stderr}")
+    else:
+        print(result.stdout)
     return result
 
 def has_changes():
@@ -174,8 +176,40 @@ def replace_placeholders(template, analysis):
     
     return template
 
-def git_commit_push():
-    """Faz commit e push da branch atual com mensagem inteligente."""
+def show_git_commands_menu():
+    """Mostra menu de comandos Git adicionais"""
+    while True:
+        print("\n🔧 Comandos Git Adicionais:")
+        print("1: git pull")
+        print("2: git branch -a (listar todos branches)")
+        print("3: git status")
+        print("4: git log --oneline -5 (últimos 5 commits)")
+        print("5: Outro comando personalizado")
+        print("0: Voltar ao menu principal")
+        
+        choice = input("Escolha uma opção: ").strip()
+        
+        if choice == '0':
+            break
+        elif choice == '1':
+            run_git_command('git pull')
+        elif choice == '2':
+            run_git_command('git branch -a')
+        elif choice == '3':
+            run_git_command('git status')
+        elif choice == '4':
+            run_git_command('git log --oneline -5')
+        elif choice == '5':
+            custom_cmd = input("Digite o comando git completo: ").strip()
+            if custom_cmd.startswith('git '):
+                run_git_command(custom_cmd)
+            else:
+                print("❌ Por segurança, apenas comandos git são permitidos.")
+        else:
+            print("❌ Opção inválida")
+
+def execute_smart_commit():
+    """Executa o fluxo de commit inteligente"""
     counters = load_counters()
     analysis = analyze_changes()
     
@@ -198,7 +232,6 @@ def git_commit_push():
     
     print(f"\n✍️ Variações para {category_key.upper()}:")
     for idx, variation in enumerate(variations, 1):
-        # Mostra a variação com placeholders substituídos
         preview = replace_placeholders(variation, analysis)
         print(f"{idx}: {preview}")
     
@@ -207,7 +240,7 @@ def git_commit_push():
         print("Operação cancelada.")
         return
     
-    if not variation_choice.isdigit() or not (1 <= int(variation_choice)) <= len(variations):
+    if not variation_choice.isdigit() or not (1 <= int(variation_choice) <= len(variations)):
         print("❌ Variação inválida.")
         return
     
@@ -218,12 +251,10 @@ def git_commit_push():
     key_id = f"{category_key}-{variation_choice}"
     counters[key_id] = counters.get(key_id, 0) + 1
     
-    # Obtém a mensagem base e substitui placeholders
     base_message = variations[int(variation_choice) - 1]
     commit_message = replace_placeholders(base_message, analysis)
     commit_message = f"{commit_message} (#{counters[key_id]})"
     
-    # Permite edição final da mensagem
     print(f"\n📝 Commit message: {commit_message}")
     edit = input("Editar mensagem? (s/n): ").strip().lower()
     if edit == 's':
@@ -232,7 +263,7 @@ def git_commit_push():
     print(f"\n🔍 Alterações detectadas:")
     changed_files = analysis['changed_files']
     if changed_files:
-        for file in changed_files[:5]:  # Mostra até 5 arquivos
+        for file in changed_files[:5]:
             print(f"- {file}")
         if len(changed_files) > 5:
             print(f"- ... e mais {len(changed_files) - 5} arquivos")
@@ -264,5 +295,25 @@ def git_commit_push():
     
     save_counters(counters)
 
+def main_menu():
+    """Menu principal do sistema"""
+    while True:
+        print("\n🌿 Menu Principal Git:")
+        print("1: Commit e Push Inteligente")
+        print("2: Comandos Git Adicionais")
+        print("0: Sair")
+        
+        choice = input("Escolha uma opção: ").strip()
+        
+        if choice == '0':
+            print("Até logo! 👋")
+            break
+        elif choice == '1':
+            execute_smart_commit()
+        elif choice == '2':
+            show_git_commands_menu()
+        else:
+            print("❌ Opção inválida")
+
 if __name__ == "__main__":
-    git_commit_push()
+    main_menu()
