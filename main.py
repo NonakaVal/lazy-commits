@@ -82,7 +82,7 @@ class GitAssistant:
             'docs': [
                 'docs: update [document]',
                 'docs: add examples for [feature]',
-                'docs: improve README',
+                'docs: update README',
                 'docs: add comments in [file]'
             ],
             'refactor': [
