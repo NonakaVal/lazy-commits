@@ -253,7 +253,7 @@ def execute_smart_commit():
     
     base_message = variations[int(variation_choice) - 1]
     commit_message = replace_placeholders(base_message, analysis)
-    commit_message = f"{commit_message} (#{counters[key_id]})"
+    commit_message = f"{commit_message} (-v{counters[key_id]})"
     
     print(f"\n📝 Commit message: {commit_message}")
     edit = input("Editar mensagem? (s/n): ").strip().lower()
