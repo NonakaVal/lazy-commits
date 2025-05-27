@@ -1,210 +1,268 @@
 import subprocess
 import os
+from collections import defaultdict
 import json
 
-# ========== CONFIGURAÇÕES ==========
-repo_path = r'C:\Users\desktop\Documents\MyApps\lazy-commits'  # Caminho do seu repositório
-default_branch = 'main'  # Branch padrão
+# Configurações
+repo_path = r"C:\Users\desktop\Documents\MyApps\lazy-commits"
+default_branch = "main"
+counters_file = os.path.join(repo_path, '.commit_counters.json')
 
-
-
-
+# Tabela de variações de commit
 commit_purposes = {
-    # FIXES (Correções de bugs/erros - gera PATCH version semântica)
-    '1': 'fix: correct typo in [component]',  # Ex: "fix: correct typo in login error message"
-    '2': 'fix: resolve [issue] in [component]',  # Ex: "fix: resolve infinite loop in data parser"
-    '3': 'fix: repair broken [functionality]',  # Ex: "fix: repair broken image upload"
-    
-    # FEATURES (Novas funcionalidades - gera MINOR version)
-    '4': 'feat: implement [feature]',  # Ex: "feat: implement dark mode toggle"
-    '5': 'feat: add [component] to [section]',  # Ex: "feat: add pagination to user dashboard"
-    '6': 'feat: integrate [service/api]',  # Ex: "feat: integrate Stripe payment gateway"
-    
-    # DOCS (Documentação - não afeta versão)
-    '7': 'docs: update [document]',  # Ex: "docs: update API endpoint documentation"
-    '8': 'docs: add examples for [feature]',  # Ex: "docs: add examples for auth middleware"
-    
-    # CODE QUALITY (Melhorias de código)
-    '9': 'refactor: simplify [component]',  # Ex: "refactor: simplify cart calculation logic"
-    '10': 'perf: optimize [process]',  # Ex: "perf: optimize image compression algorithm"
-    '11': 'style: format [file/component]',  # Ex: "style: format CSS variables"
-    
-    # CHORES (Tarefas de manutenção)
-    '12': 'chore: update [dependency]',  # Ex: "chore: update React to v18"
-    '13': 'chore: remove deprecated [code]',  # Ex: "chore: remove deprecated analytics SDK"
-    
-    # TESTING
-    '14': 'test: add [type] test for [component]',  # Ex: "test: add unit tests for validation utils"
-    '15': 'test: fix flaky [test]',  # Ex: "test: fix flaky API timeout test"
-    
-    # CI/CD & BUILD
-    '16': 'ci: configure [pipeline]',  # Ex: "ci: configure Docker build pipeline"
-    '17': 'build: modify [config]',  # Ex: "build: modify webpack output settings"
-    
-    # MENSAGENS ESPECIAIS
-    '18': 'revert: undo [change]',  # Ex: "revert: undo experimental database migration"
-    '19': 'wip: [feature] in progress',  # Ex: "wip: shopping cart integration"
+    'fix': [
+        'fix: correct typo in [component]',
+        'fix: resolve [issue] in [component]',
+        'fix: repair broken [functionality]',
+        'fix: adjust UI layout in [component]',
+        'fix: fix broken links in [file]'
+    ],
+    'feat': [
+        'feat: implement [feature]',
+        'feat: add [component] to [section]',
+        'feat: integrate [service/api]',
+        'feat: improve search in [module]',
+        'feat: add validation to [form]'
+    ],
+    'docs': [
+        'docs: update [document]',
+        'docs: add examples for [feature]',
+        'docs: improve README',
+        'docs: add comments in [file]'
+    ],
+    'refactor': [
+        'refactor: simplify [component]',
+        'refactor: restructure [module]',
+        'refactor: clean redundant code in [file]'
+    ],
+    'perf': [
+        'perf: optimize [process]',
+        'perf: improve performance of [component]'
+    ],
+    'style': [
+        'style: format [file/component]',
+        'style: update UI details in [module]'
+    ],
+    'chore': [
+        'chore: update [dependency]',
+        'chore: remove deprecated [code]',
+        'chore: clean files in [folder]',
+        'chore: update environment config'
+    ],
+    'test': [
+        'test: add [type] test for [component]',
+        'test: fix flaky [test]'
+    ],
+    'ci': [
+        'ci: configure [pipeline]',
+        'ci: update workflows'
+    ],
+    'build': [
+        'build: modify [config]',
+        'build: update build config for [platform]'
+    ],
+    'revert': [
+        'revert: undo [change]'
+    ],
+    'wip': [
+        'wip: [feature] in progress'
+    ]
 }
 
-counter_file = os.path.join(repo_path, 'commit_counters.json')
-
-# ========== FUNÇÕES DE UTILIDADE ==========
-
 def load_counters():
-    """Carrega os contadores de commit do arquivo."""
-    if os.path.exists(counter_file):
-        with open(counter_file, 'r') as f:
+    """Carrega os contadores de commits do arquivo."""
+    try:
+        with open(counters_file, 'r') as f:
             return json.load(f)
-    else:
-        return {key: 0 for key in commit_purposes.keys()}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return defaultdict(int)
 
 def save_counters(counters):
-    """Salva os contadores de commit no arquivo."""
-    with open(counter_file, 'w') as f:
-        json.dump(counters, f, indent=4)
+    """Salva os contadores de commits no arquivo."""
+    with open(counters_file, 'w') as f:
+        json.dump(counters, f)
 
-def run_git_command(command, capture_output=False):
-    """Executa um comando Git no repositório."""
-    process = subprocess.Popen(
-        command,
-        cwd=repo_path,
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    stdout, stderr = process.communicate()
-    
-    if capture_output:
-        return process.returncode == 0, stdout.decode(), stderr.decode()
-    
-    if process.returncode == 0:
-        print(stdout.decode())
-    else:
-        print(f"❌ Error: {stderr.decode()}")
-    return process.returncode == 0
+def run_git_command(command):
+    """Executa um comando git e retorna o resultado."""
+    result = subprocess.run(command, cwd=repo_path, shell=True, text=True, capture_output=True)
+    if result.returncode != 0:
+        print(f"⚠️ Erro ao executar '{command}': {result.stderr}")
+    return result
 
 def has_changes():
-    """Verifica se há alterações a serem commitadas."""
-    result = subprocess.run(
-        ['git', 'status', '--porcelain'],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        shell=True
-    )
-    return result.stdout.strip() != ""
+    """Verifica se há alterações para commit."""
+    result = run_git_command('git status --porcelain')
+    return bool(result.stdout.strip())
 
-def get_current_branch():
-    """Obtém o nome da branch atual."""
-    result = subprocess.run(
-        ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        shell=True
-    )
-    return result.stdout.strip()
+def get_changed_files():
+    """Retorna a lista de arquivos modificados."""
+    result = run_git_command('git diff --name-only HEAD')
+    if result.returncode != 0 or not result.stdout:
+        return []
+    return [f.strip() for f in result.stdout.split('\n') if f.strip()]
 
-def show_git_status():
-    """Mostra o status do Git."""
-    print("\n📊 Status do Git:")
-    run_git_command('git status')
-    print()
+def analyze_changes():
+    """Analisa as alterações para sugerir componentes e termos."""
+    changed_files = get_changed_files()
+    components = set()
+    terms = defaultdict(int)
+    
+    for file_path in changed_files:
+        # Extrai nome do arquivo sem extensão
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        if file_name:
+            components.add(file_name)
+        
+        # Extrai termos do caminho do arquivo
+        dir_parts = os.path.dirname(file_path).split('/')
+        for part in dir_parts:
+            if part and not part.startswith('.'):
+                terms[part] += 1
+    
+    # Ordena termos por frequência
+    sorted_terms = sorted(terms.items(), key=lambda x: x[1], reverse=True)
+    
+    return {
+        'components': list(components),
+        'top_terms': [term[0] for term in sorted_terms[:3]] if sorted_terms else [],
+        'changed_files': changed_files
+    }
 
-def confirm_branch(branch):
-    """Confirma se o usuário deseja usar a branch atual."""
-    current_branch = get_current_branch()
-    if current_branch != branch:
-        print(f"⚠️ Você não está na branch '{branch}'. Branch atual: '{current_branch}'")
-        choice = input(f"Deseja continuar com a branch atual '{current_branch}'? (s/n): ").lower()
-        if choice != 's':
-            print("Operação cancelada.")
+def confirm_branch(suggested_branch):
+    """Confirma ou permite alterar o branch atual."""
+    current_branch = run_git_command('git branch --show-current').stdout.strip()
+    if not current_branch:
+        print("❌ Não foi possível determinar o branch atual.")
+        return None
+    
+    print(f"\n🌿 Branch atual: {current_branch}")
+    change = input("Manter este branch? (s/n): ").strip().lower()
+    
+    if change == 'n':
+        new_branch = input("Digite o nome do novo branch: ").strip()
+        if new_branch:
+            result = run_git_command(f'git checkout -b {new_branch}')
+            if result.returncode == 0:
+                return new_branch
             return None
-        return current_branch
-    return branch
+        return None
+    return current_branch
+
+def replace_placeholders(template, analysis):
+    """Substitui placeholders na mensagem de commit com sugestões."""
+    placeholders = {
+        '[component]': analysis['components'][0] if analysis['components'] else 'component',
+        '[file]': os.path.basename(analysis['changed_files'][0]) if analysis['changed_files'] else 'file',
+        '[module]': analysis['top_terms'][0] if analysis['top_terms'] else 'module',
+        '[feature]': analysis['top_terms'][0] if analysis['top_terms'] else 'feature',
+        '[section]': analysis['top_terms'][1] if len(analysis['top_terms']) > 1 else 'section',
+        '[form]': analysis['top_terms'][0] if analysis['top_terms'] else 'form',
+        '[functionality]': analysis['top_terms'][0] if analysis['top_terms'] else 'functionality',
+        '[process]': analysis['top_terms'][0] if analysis['top_terms'] else 'process',
+        '[dependency]': analysis['top_terms'][0] if analysis['top_terms'] else 'dependency',
+        '[folder]': analysis['top_terms'][0] if analysis['top_terms'] else 'folder',
+        '[test]': analysis['top_terms'][0] if analysis['top_terms'] else 'test',
+        '[pipeline]': analysis['top_terms'][0] if analysis['top_terms'] else 'pipeline',
+        '[platform]': analysis['top_terms'][0] if analysis['top_terms'] else 'platform',
+        '[change]': analysis['top_terms'][0] if analysis['top_terms'] else 'change',
+        '[document]': analysis['top_terms'][0] if analysis['top_terms'] else 'document',
+        '[issue]': 'issue'  # Não temos como detectar automaticamente
+    }
+    
+    for placeholder, replacement in placeholders.items():
+        template = template.replace(placeholder, replacement)
+    
+    return template
 
 def git_commit_push():
-    """Faz commit e push da branch atual."""
+    """Faz commit e push da branch atual com mensagem inteligente."""
     counters = load_counters()
-
-    print("\n📜 Selecione o propósito do commit:")
-    for key, purpose in commit_purposes.items():
-        print(f"{key}: {purpose}")
+    analysis = analyze_changes()
     
-    purpose_key = input("Digite o número correspondente ao propósito (ou 'c' para cancelar): ").strip()
-
-    if purpose_key.lower() == 'c':
+    print("\n📜 Categorias de commit:")
+    keys = list(commit_purposes.keys())
+    for idx, key in enumerate(keys, 1):
+        print(f"{idx}: {key.upper()}")
+    
+    category_choice = input("\nSelecione a categoria (ou 'c' para cancelar): ").strip()
+    if category_choice.lower() == 'c':
         print("Operação cancelada.")
         return
     
-    if purpose_key not in commit_purposes:
-        print("❌ Seleção inválida.")
+    if not category_choice.isdigit() or not (1 <= int(category_choice) <= len(keys)):
+        print("❌ Categoria inválida.")
         return
-
+    
+    category_key = keys[int(category_choice) - 1]
+    variations = commit_purposes[category_key]
+    
+    print(f"\n✍️ Variações para {category_key.upper()}:")
+    for idx, variation in enumerate(variations, 1):
+        # Mostra a variação com placeholders substituídos
+        preview = replace_placeholders(variation, analysis)
+        print(f"{idx}: {preview}")
+    
+    variation_choice = input("\nEscolha a variação (ou 'c' para cancelar): ").strip()
+    if variation_choice.lower() == 'c':
+        print("Operação cancelada.")
+        return
+    
+    if not variation_choice.isdigit() or not (1 <= int(variation_choice)) <= len(variations):
+        print("❌ Variação inválida.")
+        return
+    
     branch = confirm_branch(default_branch)
     if branch is None:
         return
-
-    counters[purpose_key] += 1
-    commit_message = f"{commit_purposes[purpose_key]} (#{counters[purpose_key]})"
     
-    print(f"\n📝 Commit message: {commit_message}\n")
+    key_id = f"{category_key}-{variation_choice}"
+    counters[key_id] = counters.get(key_id, 0) + 1
+    
+    # Obtém a mensagem base e substitui placeholders
+    base_message = variations[int(variation_choice) - 1]
+    commit_message = replace_placeholders(base_message, analysis)
+    commit_message = f"{commit_message} (#{counters[key_id]})"
+    
+    # Permite edição final da mensagem
+    print(f"\n📝 Commit message: {commit_message}")
+    edit = input("Editar mensagem? (s/n): ").strip().lower()
+    if edit == 's':
+        commit_message = input("Digite a nova mensagem: ").strip()
+    
+    print(f"\n🔍 Alterações detectadas:")
+    changed_files = analysis['changed_files']
+    if changed_files:
+        for file in changed_files[:5]:  # Mostra até 5 arquivos
+            print(f"- {file}")
+        if len(changed_files) > 5:
+            print(f"- ... e mais {len(changed_files) - 5} arquivos")
+    else:
+        print("⚠️ Nenhuma alteração detectada.")
     
     if not has_changes():
-        print("⚠️ Nenhuma alteração detectada. Nada para commit.")
+        print("⚠️ Nenhuma alteração para commit.")
         return
-
+    
+    confirm = input("\nConfirmar commit e push? (s/n): ").strip().lower()
+    if confirm != 's':
+        print("Operação cancelada.")
+        return
+    
     run_git_command('git add .')
     run_git_command(f'git commit -m "{commit_message}"')
-
-    result = subprocess.run(
-        ['git', 'push'],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-        shell=True
-    )
-
+    
+    result = run_git_command('git push')
+    
     if 'has no upstream branch' in result.stderr:
         print(f"🔗 Branch '{branch}' não tem upstream. Configurando...")
         run_git_command(f'git push --set-upstream origin {branch}')
         print(f"✅ Upstream configurado: 'origin/{branch}'")
     elif result.returncode != 0:
-        print(f"❌ Error: {result.stderr}")
+        print(f"❌ Erro no push: {result.stderr}")
     else:
         print(f"✅ Push realizado com sucesso para '{branch}'!")
     
     save_counters(counters)
 
-# ========== MENU PRINCIPAL ==========
-
-def main_menu():
-    """Exibe o menu principal e processa as escolhas do usuário."""
-    while True:
-        print("\n" + "="*40)
-        print("MENU PRINCIPAL".center(40))
-        print("="*40)
-        print("1. Ver status do Git")
-        print("2. Fazer commit e push")
-        print("3. Encerrar programa")
-        print("="*40)
-        
-        choice = input("Escolha uma opção (1-3): ").strip()
-        
-        if choice == '1':
-            show_git_status()
-        elif choice == '2':
-            git_commit_push()
-        elif choice == '3':
-            print("Encerrando o programa...")
-            break
-        else:
-            print("❌ Opção inválida. Por favor, escolha 1, 2 ou 3.")
-
-# ========== EXECUÇÃO PRINCIPAL ==========
-
 if __name__ == "__main__":
-    try:
-        main_menu()
-    except KeyboardInterrupt:
-        print("\nPrograma interrompido pelo usuário.")
+    git_commit_push()
