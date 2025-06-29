@@ -2,10 +2,6 @@ import subprocess
 from datetime import datetime
 
 # Commit type and their detailed options
-#########################################################################################################
-# This dictionary defines the commit types and their corresponding options.     
-
-
 COMMIT_OPTIONS = {
     'feat': ['add new feature', 'implement module', 'create component', 'integrate API'],
     'fix': ['fix bug', 'resolve performance issue', 'adjust validation', 'repair critical error'],
@@ -13,11 +9,6 @@ COMMIT_OPTIONS = {
     'refactor': ['improve code structure', 'optimize function', 'remove duplicate code', 'simplify logic'],
     'chore': ['update dependencies', 'configure environment', 'adjust settings', 'clean up old code'],
 }
-
-#########################################################################################################
-#########################################################################################################
-# Funções auxiliares para executar comandos e interagir com o usuário
-#########################################################################################################
 
 def run_command(command: list[str], show_error=True) -> bool:
     """Executa um comando de terminal e retorna sucesso ou falha."""
@@ -66,30 +57,51 @@ def commit_changes(message: str):
             else:
                 print("\n❌ Push failed")
 
-
-########################################################################################################### 
-# Funções principais para o fluxo de commit
-#########################################################################################################
-
-
-def create_commit_flow():
-    types = list(COMMIT_OPTIONS.keys())
-    type_index = select_option("SELECT FIRST PART (commit type):", types, allow_quit=True)
-    if type_index is None:
-        return False
-
-    commit_type = types[type_index]
-    message_options = COMMIT_OPTIONS[commit_type]
-    message_index = select_option(f"SELECT SECOND PART ({commit_type} options):", message_options)
-    message_part = message_options[message_index]
-
-    commit_msg = generate_commit_message(commit_type, message_part)
+def create_custom_commit():
+    print("\nEnter your commit message (type will be automatically detected):")
+    custom_msg = input("Message: ").strip()
+    
+    # Auto-detect commit type from the message
+    commit_type = "chore"  # default
+    for t in COMMIT_OPTIONS.keys():
+        if custom_msg.lower().startswith(t + ":"):
+            commit_type = t
+            custom_msg = custom_msg[len(t)+1:].strip()
+            break
+    
+    commit_msg = generate_commit_message(commit_type, custom_msg)
     commit_changes(commit_msg)
     return True
 
+def create_commit_flow():
+    print("\nChoose commit method:")
+    print("1: Use guided commit (select from options)")
+    print("2: Write custom commit message")
+    print("q: Cancel")
+    
+    choice = input("Select option: ").strip().lower()
+    
+    if choice == '1':
+        types = list(COMMIT_OPTIONS.keys())
+        type_index = select_option("SELECT FIRST PART (commit type):", types, allow_quit=True)
+        if type_index is None:
+            return False
 
-##########################################################################################################
-# Função principal para iniciar o assistente de commit
+        commit_type = types[type_index]
+        message_options = COMMIT_OPTIONS[commit_type]
+        message_index = select_option(f"SELECT SECOND PART ({commit_type} options):", message_options)
+        message_part = message_options[message_index]
+
+        commit_msg = generate_commit_message(commit_type, message_part)
+        commit_changes(commit_msg)
+        return True
+    elif choice == '2':
+        return create_custom_commit()
+    elif choice == 'q':
+        return False
+    else:
+        print("Invalid option")
+        return True
 
 def main():
     print("🐙 Git Commit Assistant")
@@ -105,7 +117,6 @@ def main():
             break
         else:
             print("Invalid option, please try again")
-
 
 if __name__ == "__main__":
     main()
