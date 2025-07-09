@@ -1,5 +1,8 @@
+#!/usr/bin/env python3
 import subprocess
 from datetime import datetime
+import os
+import sys
 
 # Commit type and their detailed options
 COMMIT_OPTIONS = {
@@ -103,7 +106,15 @@ def create_commit_flow():
         print("Invalid option")
         return True
 
+def check_git_repo():
+    """Check if current directory is a git repository"""
+    if not os.path.exists(".git"):
+        print("❌ Error: This is not a git repository")
+        print("Please run this command in a git repository directory")
+        sys.exit(1)
+
 def main():
+    check_git_repo()
     print("🐙 Git Commit Assistant")
     while True:
         print("\n1: Start new commit")
