@@ -1,133 +1,123 @@
 #!/usr/bin/env python3
-import subprocess
-from datetime import datetime
 import os
+import subprocess
 import sys
+from datetime import datetime
 
-# Commit type and their detailed options
+# ------------------------------
+# Configuração de opções de commit
+# ------------------------------
 COMMIT_OPTIONS = {
-    'feat': ['add new feature', 'implement module', 'create component', 'integrate API'],
-    'fix': ['fix bug', 'resolve performance issue', 'adjust validation', 'repair critical error'],
-    'docs': ['update documentation', 'add examples', 'fix typo', 'improve explanation'],
-    'refactor': ['improve code structure', 'optimize function', 'remove duplicate code', 'simplify logic'],
-    'chore': ['update dependencies', 'configure environment', 'adjust settings', 'clean up old code'],
+    "update": ["minor update", "data update", "config update", "workflow update", "full update"],
+    "vault": ["minor update", "adjust structure", "update config", "add templates", "new plugin setup", "content update", "full update"],
+    "feat": ["new feature", "new component", "API integration", "automation"],
+    "fix": ["bug fix", "performance fix", "error fix", "critical fix"],
+    "docs": ["documentation", "add example", "readme update", "comment code"],
+    "refactor": ["code improvement", "optimize", "simplify", "remove redundancy"],
+    "chore": ["dependency update", "environment setup", "CI/CD update", "cleanup"]
 }
 
-def run_command(command: list[str], show_error=True) -> bool:
-    """Executa um comando de terminal e retorna sucesso ou falha."""
+# ------------------------------
+# Funções auxiliares
+# ------------------------------
+
+def run_command(cmd):
     try:
-        subprocess.run(command, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        if show_error:
-            print(f"\n❌ Error: {e}")
+        subprocess.run(cmd, check=True, shell=True)
+    except subprocess.CalledProcessError:
+        print(f"❌ Command failed: {cmd}")
         return False
+    return True
 
-def select_option(prompt: str, options: list[str], allow_quit=False) -> int | None:
-    """Mostra opções e retorna o índice escolhido pelo usuário."""
+def select_option(prompt, options, allow_quit=False):
     print(f"\n{prompt}")
-    for i, option in enumerate(options, 1):
-        print(f"{i}: {option}")
+    for i, opt in enumerate(options, 1):
+        print(f"{i}: {opt}")
+    while True:
+        choice = input("Enter number{}: ".format(" (or q to quit)" if allow_quit else ""))
+        if allow_quit and choice.lower() == 'q':
+            return None
+        if choice.isdigit() and 1 <= int(choice) <= len(options):
+            return int(choice) - 1
+        print("⚠️ Invalid choice, try again.")
 
-    choice = input("\nEnter number" + (" (or 'q' to quit): " if allow_quit else ": ")).strip().lower()
+def generate_commit_message(commit_type, message):
+    return f"{commit_type}: {message} ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
 
-    if allow_quit and choice == 'q':
-        return None
-
-    if choice.isdigit():
-        idx = int(choice)
-        if 1 <= idx <= len(options):
-            return idx - 1
-
-    print("⚠️ Invalid choice. Defaulting to last option.")
-    return len(options) - 1
-
-def generate_commit_message(commit_type: str, message_part: str) -> str:
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    return f"{commit_type}: {message_part} ({timestamp})"
-
-def commit_changes(message: str):
+def commit_changes(message):
     print(f"\nGenerated commit message:\n🔸 {message}")
-    if input("Confirm commit? (y/n): ").lower().strip() != 'y':
-        print("\n❌ Commit canceled")
+    confirm = input("Confirm commit? (y/n): ")
+    if confirm.lower() != 'y':
+        print("❌ Commit canceled")
         return
-
-    if run_command(['git', 'add', '.']) and run_command(['git', 'commit', '-m', message]):
-        print("\n✅ Commit successful!")
-        if input("Push to remote? (y/n): ").lower().strip() == 'y':
-            if run_command(['git', 'push']):
-                print("\n🚀 Successfully pushed to remote!")
-            else:
-                print("\n❌ Push failed")
+    if run_command("git add .") and run_command(f'git commit -m "{message}"'):
+        print("✅ Commit successful!")
+        if input("Push to remote? (y/n): ").lower() == 'y':
+            run_command("git push")
 
 def create_custom_commit():
-    print("\nEnter your commit message (type will be automatically detected):")
-    custom_msg = input("Message: ").strip()
-    
-    # Auto-detect commit type from the message
-    commit_type = "chore"  # default
+    custom_msg = input("Enter your commit message: ")
+    commit_type = "chore"
     for t in COMMIT_OPTIONS.keys():
-        if custom_msg.lower().startswith(t + ":"):
+        if custom_msg.startswith(f"{t}:"):
             commit_type = t
             custom_msg = custom_msg[len(t)+1:].strip()
             break
-    
-    commit_msg = generate_commit_message(commit_type, custom_msg)
-    commit_changes(commit_msg)
-    return True
+    commit_changes(generate_commit_message(commit_type, custom_msg))
 
 def create_commit_flow():
     print("\nChoose commit method:")
-    print("1: Use guided commit (select from options)")
+    print("1: Use guided commit")
     print("2: Write custom commit message")
     print("q: Cancel")
-    
-    choice = input("Select option: ").strip().lower()
-    
+    choice = input("Select option: ")
+
     if choice == '1':
         types = list(COMMIT_OPTIONS.keys())
-        type_index = select_option("SELECT FIRST PART (commit type):", types, allow_quit=True)
-        if type_index is None:
-            return False
-
-        commit_type = types[type_index]
-        message_options = COMMIT_OPTIONS[commit_type]
-        message_index = select_option(f"SELECT SECOND PART ({commit_type} options):", message_options)
-        message_part = message_options[message_index]
-
-        commit_msg = generate_commit_message(commit_type, message_part)
-        commit_changes(commit_msg)
-        return True
+        idx = select_option("SELECT FIRST PART (commit type):", types, allow_quit=True)
+        if idx is None:
+            return
+        commit_type = types[idx]
+        messages = COMMIT_OPTIONS[commit_type]
+        idx_msg = select_option(f"SELECT SECOND PART ({commit_type} options):", messages)
+        message_part = messages[idx_msg]
+        commit_changes(generate_commit_message(commit_type, message_part))
     elif choice == '2':
-        return create_custom_commit()
-    elif choice == 'q':
-        return False
+        create_custom_commit()
+    elif choice.lower() == 'q':
+        return
     else:
-        print("Invalid option")
-        return True
+        print("⚠️ Invalid option")
 
 def check_git_repo():
-    """Check if current directory is a git repository"""
-    if not os.path.exists(".git"):
-        print("❌ Error: This is not a git repository")
-        print("Please run this command in a git repository directory")
+    if not os.path.isdir(".git"):
+        print("❌ This is not a git repository")
         sys.exit(1)
 
+def start_ssh_agent():
+    # Start SSH agent and add key
+    run_command('eval "$(ssh-agent -s)"')
+    run_command("ssh-add ~/.ssh/id_ed25519")
+
+# ------------------------------
+# Main
+# ------------------------------
 def main():
     check_git_repo()
+    start_ssh_agent()
     print("🐙 Git Commit Assistant")
+
     while True:
         print("\n1: Start new commit")
         print("2: Exit")
-        user_input = input("Select option: ").strip()
+        user_input = input("Select option: ")
         if user_input == '1':
-            if not create_commit_flow():
-                break
+            create_commit_flow()
         elif user_input == '2':
-            print("\n👋 Goodbye!")
+            print("👋 Goodbye!")
             break
         else:
-            print("Invalid option, please try again")
+            print("⚠️ Invalid option, please try again")
 
 if __name__ == "__main__":
     main()

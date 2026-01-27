@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+# 🔑 Start SSH agent
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+
+# ------------------------------
+# Configuração de opções de commit
+# ------------------------------
+declare -A COMMIT_OPTIONS
+COMMIT_OPTIONS[update]="minor update|data update|config update|workflow update|full update"
+COMMIT_OPTIONS[vault]="minor update|adjust structure|update config|add templates|new plugin setup|content update|full update"
+COMMIT_OPTIONS[feat]="new feature|new component|API integration|automation"
+COMMIT_OPTIONS[fix]="bug fix|performance fix|error fix|critical fix"
+COMMIT_OPTIONS[docs]="documentation|add example|readme update|comment code"
+COMMIT_OPTIONS[refactor]="code improvement|optimize|simplify|remove redundancy"
+COMMIT_OPTIONS[chore]="dependency update|environment setup|CI/CD update|cleanup"
+
+# ------------------------------
+# Funções
+# ------------------------------
+
+run_command() {
+    "$@" || { echo "❌ Command failed: $*"; return 1; }
+}
+
+select_option() {
+    local prompt="$1"
+    local options=("${!2}")
+    local allow_quit="$3"
+    local choice_index
+
+    echo -e "\n$prompt"
+    for i in "${!options[@]}"; do
+        echo "$((i+1)): ${options[i]}"
+    done
+
+    while true; do
+        if [[ "$allow_quit" == "true" ]]; then
+            read -rp "Enter number (or q to quit): " choice
+            [[ "$choice" == "q" ]] && return 255
+        else
+            read -rp "Enter number: " choice
+        fi
+
+        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
+            choice_index=$((choice-1))
+            return $choice_index
+        fi
+
+        echo "⚠️ Invalid choice, try again."
+    done
+}
+
+generate_commit_message() {
+    local type="$1"
+    local message="$2"
+    echo "$type: $message ($(date '+%Y-%m-%d %H:%M'))"
+}
+
+commit_changes() {
+    local message="$1"
+    echo -e "\nGenerated commit message:\n🔸 $message"
+    read -rp "Confirm commit? (y/n): " confirm
+    [[ "$confirm" != "y" ]] && { echo "❌ Commit canceled"; return; }
+
+    run_command git add . && run_command git commit -m "$message"
+    if [[ $? -eq 0 ]]; then
+        echo "✅ Commit successful!"
+        read -rp "Push to remote? (y/n): " push
+        [[ "$push" == "y" ]] && run_command git push
+    fi
+}
+
+create_custom_commit() {
+    read -rp "Enter your commit message: " custom_msg
+    local commit_type="chore"  # default
+
+    for t in "${!COMMIT_OPTIONS[@]}"; do
+        if [[ "$custom_msg" =~ ^$t: ]]; then
+            commit_type="$t"
+            custom_msg="${custom_msg#${t}:}"
+            custom_msg="${custom_msg## }"
+            break
+        fi
+    done
+
+    commit_changes "$(generate_commit_message "$commit_type" "$custom_msg")"
+}
+
+create_commit_flow() {
+    echo -e "\nChoose commit method:"
+    echo "1: Use guided commit"
+    echo "2: Write custom commit message"
+    echo "q: Cancel"
+    read -rp "Select option: " choice
+
+    case "$choice" in
+        1)
+            types=("${!COMMIT_OPTIONS[@]}")
+            select_option "SELECT FIRST PART (commit type):" types[@] true
+            idx=$?
+            [[ $idx -eq 255 ]] && return 1
+            commit_type="${types[$idx]}"
+
+            IFS='|' read -r -a messages <<< "${COMMIT_OPTIONS[$commit_type]}"
+            select_option "SELECT SECOND PART ($commit_type options):" messages[@] false
+            idx_msg=$?
+            message_part="${messages[$idx_msg]}"
+
+            commit_changes "$(generate_commit_message "$commit_type" "$message_part")"
+            ;;
+        2)
+            create_custom_commit
+            ;;
+        q)
+            return 1
+            ;;
+        *)
+            echo "⚠️ Invalid option"
+            ;;
+    esac
+}
+
+check_git_repo() {
+    [[ ! -d .git ]] && { echo "❌ This is not a git repository"; exit 1; }
+}
+
+main() {
+    check_git_repo
+    echo "🐙 Git Commit Assistant"
+    while true; do
+        echo -e "\n1: Start new commit"
+        echo "2: Exit"
+        read -rp "Select option: " user_input
+        case "$user_input" in
+            1) create_commit_flow ;;
+            2) echo "👋 Goodbye!"; break ;;
+            *) echo "⚠️ Invalid option, please try again" ;;
+        esac
+    done
+}
+
+main
