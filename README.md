@@ -20,7 +20,7 @@ Vídeo rápido rodando - https://i.imgur.com/IBKchDS.mp4
 
 #### Python
 
-1️⃣ Salve o script como [gca.py](https://raw.github.com/NonakaVal/lazy-commits/main/gca.py``) no seu home:
+1️⃣ Salve o script [gca.py](https://raw.github.com/NonakaVal/lazy-commits/main/gca.py):
 
 ```bash
 nano ~/gca.py
@@ -57,7 +57,7 @@ source ~/.bashrc
 #### bash (arch linux)
 ---
 
-1. Salve o arquivo, por exemplo, como `gca`:
+1. Salve o [arquivo](https://raw.github.com/NonakaVal/lazy-commits/main/gca) como `gca`:
 
 ```bash
 sudo nano /usr/local/bin/gca
@@ -107,6 +107,7 @@ gca
 MIT — veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
 ---
+
 
 
 
