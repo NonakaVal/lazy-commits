@@ -2,7 +2,7 @@
 
 Uma CLI simples para facilitar e agilizar commits no Git com mensagens padronizadas, interativas ou customizadas.
 
-Não me julgue sem ler : https://automatetheboringstuff.com/..-- 
+Não me julgue sem ler : [Automate the Boring Stuff with Python](https://automatetheboringstuff.com/) By Al Sweigart
 
 Vídeo rápido rodando - https://i.imgur.com/IBKchDS.mp4
 
@@ -107,6 +107,7 @@ gca
 MIT — veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
 ---
+
 
 
 
